@@ -26,24 +26,46 @@ import java.util.stream.Collectors;
  *  help
  *  exit
  */
+
 public class StudyBuddyCLI {
 
     // ============================= DOMAIN =============================
 
     enum Status { PENDING, CONFIRMED, DECLINED }
 
+    /**
+     * A class for slots of availability for students
+     */
     static final class AvailabilitySlot {
         final DayOfWeek dayOfWeek;
         final LocalTime start;
         final LocalTime end;
+
+        /**
+         * Creates an instance of the class
+         * @param d date of the week
+         * @param s start time
+         * @param e end time
+         */
         AvailabilitySlot(DayOfWeek d, LocalTime s, LocalTime e){
             if (e.isBefore(s) || e.equals(s)) throw new IllegalArgumentException("end must be after start");
             this.dayOfWeek=d; this.start=s; this.end=e;
         }
+
+        /**
+         * Simply checks for availibility overlaps
+         * @param other the other availibility slot to be checked
+         * @return true for an overlap and false for no overlap
+         */
         boolean overlaps(AvailabilitySlot other){
             if (!this.dayOfWeek.equals(other.dayOfWeek)) return false;
             return !this.end.isBefore(other.start) && !other.end.isBefore(this.start);
         }
+
+        /**
+         * Simply returns the Availability slot as a string
+         * @return the string verison of availibility slot
+         */
         @Override public String toString(){
             return dayOfWeek + " " + start + "-" + end;
         }
@@ -58,6 +80,10 @@ public class StudyBuddyCLI {
         }
     }
 
+    /**
+     * Class with variables to represent important information involving
+     * the student useful for scheduling times to study and contacting the student.
+     */
     static final class Student {
         final String id; // s#
         String name;
@@ -67,6 +93,11 @@ public class StudyBuddyCLI {
         Student(String id, String name, String email){ this.id=id; this.name=name; this.email=email; }
     }
 
+    /**
+     * Class for storing information and data on the actual study information,
+     * such as the class code the study session is used for
+     * the student ids, the session ID, as well as various other important aspects
+     */
     static final class StudySession {
         final String id; // S#
         String courseCode;
@@ -79,6 +110,10 @@ public class StudyBuddyCLI {
 
     // ============================= REPOSITORY (CSV) =============================
 
+    /**
+     * Repo is a class for creating and editing the files(CSV files) that store various
+     * information on students and study sessions.
+     */
     static final class Repo {
         private final Path dataDir;
         private final Path studentsCsv;
@@ -90,6 +125,12 @@ public class StudyBuddyCLI {
         private int studentSeq = 1;
         private int sessionSeq = 1;
 
+        /**
+         * Constructor for repo. Creates the Repo class
+         * and creates the csv files, or ensures they exist.
+         * @pre none
+         * @post resolves paths "students.csv", "availability.csv", and "sessions.csv"
+         */
         Repo(Path dataDir){
             this.dataDir = dataDir;
             this.studentsCsv = dataDir.resolve("students.csv");
@@ -97,6 +138,9 @@ public class StudyBuddyCLI {
             this.sessionsCsv = dataDir.resolve("sessions.csv");
         }
 
+        /**
+         * Loads the data from the CSV's into the classes
+         */
         void load() throws IOException {
             if (!Files.exists(dataDir)) Files.createDirectories(dataDir);
             // Students
@@ -155,6 +199,9 @@ public class StudyBuddyCLI {
             }
         }
 
+        /**
+         * Saves the variables for students and sessions as CSVs
+         */
         void save() throws IOException {
             if (!Files.exists(dataDir)) Files.createDirectories(dataDir);
             // Students
@@ -194,6 +241,9 @@ public class StudyBuddyCLI {
             Files.copy(sessionsCsv, outDir.resolve("sessions.csv"), StandardCopyOption.REPLACE_EXISTING);
         }
 
+        /**
+         *  Simply creates a new student using a string for email and a string for name.
+         */
         Student createStudent(String name, String email){
             String id = "s"+ (studentSeq++);
             Student s = new Student(id, name, email);
@@ -247,8 +297,19 @@ public class StudyBuddyCLI {
 
     static final class Service {
         private final Repo repo;
+
+        /**
+         * Constructor which starts the "service" by creating repo.
+         * @param repo the location where everything is stored after being saved.
+         */
         Service(Repo repo){ this.repo=repo; }
 
+        /**
+         * Simply creates a new profile for a student
+         * @param name is name of student
+         * @param email is the email of student
+         * @return the student created
+         */
         Student createProfile(String name, String email){
             require(name!=null && !name.isBlank(), "name required");
             require(email!=null && !email.isBlank(), "email required");
@@ -256,30 +317,68 @@ public class StudyBuddyCLI {
             return s;
         }
 
+        /**
+         * Adds a course based on the provided parameters
+         * @param studentId the student attending the course
+         * @param course the course the student is attending
+         */
         void addCourse(String studentId, String course){
             Student s = getStudent(studentId);
             s.courses.add(course.trim());
         }
+
+        /**
+         * Simply removes the student from the course
+         * @param studentId the student to be removed from a course
+         * @param course the course the student is removed from.
+         */
         void removeCourse(String studentId, String course){
             Student s = getStudent(studentId);
             s.courses.remove(course.trim());
         }
 
+        /**
+         * Simply creates an instance of the AvailabilitySlot class.
+         * @param studentId the students identification
+         * @param dow the day of the week
+         * @param start the start time
+         * @param end the end time
+         */
         void addAvailability(String studentId, DayOfWeek dow, LocalTime start, LocalTime end){
             Student s = getStudent(studentId);
             s.availability.add(new AvailabilitySlot(dow,start,end));
         }
+
+        /**
+         * Simply remove the availability for a specific student
+         * @param studentId the students identification
+         * @param dow the day of the week
+         * @param start the start time
+         * @param end the end time
+         */
         void removeAvailability(String studentId, DayOfWeek dow, LocalTime start, LocalTime end){
             Student s = getStudent(studentId);
             s.availability.removeIf(a -> a.dayOfWeek.equals(dow) && a.start.equals(start) && a.end.equals(end));
         }
 
+        /**
+         * Returns the classmate in a specific course.
+         * @param course the course checking for
+         * @return all classmates in the course
+         */
         List<Student> classmatesInCourse(String course){
             return repo.allStudents().stream()
                     .filter(s -> s.courses.contains(course))
                     .collect(Collectors.toList());
         }
 
+        /**
+         *
+         * Simply returns a list of students who are within the same availability.
+         * @param studentId the identification of the student
+         * @param course the course the student
+         * @return the list of students with similar availability
+         */
         List<Student> suggestMatches(String studentId, String course){
             Student me = getStudent(studentId);
             require(me.courses.contains(course), "You are not enrolled in "+course);
@@ -290,6 +389,15 @@ public class StudyBuddyCLI {
                     .collect(Collectors.toList());
         }
 
+        /**
+         * Simply proposes a session for students
+         *
+         * @param inviterId student id of the person proposing the session
+         * @param course the course the session is for
+         * @param slot the time slot
+         * @param inviteeIds the student ids of the people being proposed to
+         * @return
+         */
         StudySession proposeSession(String inviterId, String course, AvailabilitySlot slot, List<String> inviteeIds){
             Student inviter = getStudent(inviterId);
             require(inviter.courses.contains(course), "Inviter not in course");
@@ -302,6 +410,12 @@ public class StudyBuddyCLI {
             return repo.createSession(course, slot, inviterId, inviteeIds);
         }
 
+        /**
+         * Function to accept or deny a session
+         * @param studentId the ID of a student
+         * @param sessionId the ID for the session that is being responded to
+         * @param accept True for accept and False for deny
+         */
         void respondToSession(String studentId, String sessionId, boolean accept){
             StudySession ss = repo.findSession(sessionId).orElseThrow(() -> new IllegalArgumentException("Session not found"));
             require(ss.participants.contains(studentId), "You are not an invitee of this session");
@@ -313,17 +427,35 @@ public class StudyBuddyCLI {
             }
         }
 
+        /**
+         * List all sessions for a specific student
+         *
+         * @param studentId the student for the student who is their study sessions set up
+         * @return the list of study sessions for a student.
+         */
         List<StudySession> listSessionsFor(String studentId){
             return repo.allSessions().stream()
                     .filter(s -> s.participants.contains(studentId))
                     .collect(Collectors.toList());
         }
 
+        /**
+         * Checks if any availabilitySlot that overlaps for two lists
+         * @param a one list of availability for one student
+         * @param b one list of availability for another student
+         * @return a boolean to see if they return or not.
+         */
         private static boolean overlapsAny(List<AvailabilitySlot> a, List<AvailabilitySlot> b){
             for (AvailabilitySlot x : a) for (AvailabilitySlot y : b) if (x.overlaps(y)) return true;
             return false;
         }
 
+        /**
+         *
+         * gets a student based on the id
+         * @param id the identification string for a student
+         * @return the student class that goes for string id
+         */
         private Student getStudent(String id){
             return repo.findStudent(id).orElseThrow(()-> new IllegalArgumentException("Student not found: "+id));
         }
@@ -362,6 +494,13 @@ public class StudyBuddyCLI {
         }
     }
 
+    /**
+     * Simply deals with the commands within the program.
+     *
+     * @param line the command as a string
+     * @param svc simply the service passed within main
+     * @param repo the repo for main
+     */
     private static void handleCommand(String line, Service svc, Repo repo) throws Exception {
         List<String> toks = tokenize(line);
         if (toks.size()<1) return;
@@ -467,6 +606,10 @@ public class StudyBuddyCLI {
         if (!kv.isEmpty()) System.out.println("WARNING: Ignored flags " + kv.keySet());
     }
 
+    /**
+     * Simply prints the output for typing print in the
+     * program.
+     */
     private static void printHelp(){
         System.out.println("Commands (CSV output):\n" +
                 "  profile create --name <NAME> --email <EMAIL>\n" +
@@ -485,6 +628,11 @@ public class StudyBuddyCLI {
 
     // ============================= UTIL =============================
 
+    /**
+     * Simply outputs the tokenized version of the command in the program
+     * @param line the command it self
+     * @return a list of strings, that represent the command options
+     */
     private static List<String> tokenize(String line){
         // Split by spaces but keep quoted strings intact; also interpret first token after command as subcommand via --cmd
         List<String> raw = new ArrayList<>();
@@ -513,6 +661,11 @@ public class StudyBuddyCLI {
         return raw;
     }
 
+    /**
+     * Simply go through the flags and put them in a map of strngs
+     * @param toks the list of options for the flags
+     * @return a map of strings, to easily navigate the flags
+     */
     private static Map<String,String> parseFlags(List<String> toks){
         Map<String,String> kv = new LinkedHashMap<>();
         for (int i=0;i<toks.size();i++){
@@ -529,6 +682,11 @@ public class StudyBuddyCLI {
     private static String requireStr(String v, String what){ if (v==null || v.isBlank()) throw new IllegalArgumentException("Missing "+what); return v; }
     private static void require(boolean cond, String msg){ if (!cond) throw new IllegalArgumentException(msg); }
 
+    /**
+     * Returns an enum for respective date of the week
+     * @param s string for date of the week
+     * @return enum for date of the week
+     */
     private static DayOfWeek parseDow(String s){
         s = s.trim().toUpperCase();
         switch (s){
