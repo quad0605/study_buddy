@@ -1,0 +1,11 @@
+profile create --name "Alice" --email "alice@clemson.edu"
+profile create --name "Bob" --email "bob@clemson.edu"
+course add --id s1 --course "CPSC-3720"
+course add --id s2 --course "CPSC-3720"
+availability add --id s1 --dow MON --start 14:00 --end 16:00
+availability add --id s2 --dow MON --start 15:00 --end 17:00
+match suggest --id s1 --course "CPSC-3720"
+session propose --id s1 --course "CPSC-3720" --slot "MON 15:00-16:00" --invitees s2
+session respond --id s2 --session S1 --accept true
+session list --id s1
+export csv --dir "./exports"

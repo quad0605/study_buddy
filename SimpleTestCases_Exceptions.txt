@@ -1,0 +1,14 @@
+profile create --email "missingname@clemson.edu"
+profile create --name "Bob" --email "bob@notclemson.com"
+profile create --name "Charlie" --email "charlie@clemson.edu" --phone "1234567890"
+course add --id s999 --course "CPSC-3720"
+availability add --id s1 --dow MON --start 25:00 --end 26:00
+availability add --id s1 --dow MON --start 15:00 --end 14:00
+match suggest --id s1 --course "NONEXISTENT-101"
+match suggest --id s999 --course "CPSC-3720"
+session propose --id s1 --course "CPSC-3720" --slot "INVALID SLOT" --invitees s2
+session propose --id s1 --course "CPSC-3720" --slot "MON 14:00-15:00"
+session respond --id s1 --session X999 --accept true
+session respond --id s2 --session S1 --accept maybe
+session list --id s999
+export csv --dir "/invalid/path/to/export"
