@@ -1,0 +1,65 @@
+START
+
+INITIALIZE students_file = "data/students.csv"
+INITIALIZE availability_file = "data/availability.csv"
+INITIALIZE sessions_file = "data/sessions.csv"
+
+LOAD students FROM students_file
+LOAD availability FROM availability_file
+LOAD sessions FROM sessions_file
+
+WHILE true DO
+    PRINT "Enter command:"
+    READ command
+
+    SWITCH command.type
+        CASE "profile create":
+            READ name, email
+            GENERATE student_id
+            ADD {id: student_id, name: name, email: email, courses: []} TO students
+            SAVE students TO students_file
+
+        CASE "course add":
+            READ student_id, course
+            FIND student BY student_id
+            APPEND course TO student.courses
+            SAVE students TO students_file
+
+        CASE "availability add":
+            READ student_id, dow, start_time, end_time
+            ADD {student_id: student_id, dow: dow, start: start_time, end: end_time} TO availability
+            SAVE availability TO availability_file
+
+        CASE "match suggest":
+            READ student_id, course
+            FIND all students with course
+            FIND common availability slots
+            PRINT suggested matches
+
+        CASE "session propose":
+            READ student_id, course, slot, invitees
+            GENERATE session_id
+            ADD {id: session_id, proposer: student_id, course: course, slot: slot, invitees: invitees, responses: {}} TO sessions
+            SAVE sessions TO sessions_file
+
+        CASE "session respond":
+            READ student_id, session_id, accept
+            FIND session BY session_id
+            UPDATE responses[student_id] = accept
+            SAVE sessions TO sessions_file
+
+        CASE "session list":
+            READ student_id
+            FIND all sessions where student_id is proposer OR invitee
+            PRINT sessions
+
+        CASE "export csv":
+            READ directory
+            COPY students_file, availability_file, sessions_file TO directory
+
+        CASE "exit":
+            BREAK
+    END SWITCH
+END WHILE
+
+END
